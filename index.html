@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INNOVATE-X Event Assistant</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .chat-container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: #7f8c8d;
+            margin-top: 0;
+        }
+        .chat-history {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        .bot-message {
+            background-color: #e9ecef;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #007bff;
+        }
+        button {
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            margin: 15px 0;
+            text-align: center;
+            color: #666;
+        }
+        .loading-dots {
+            display: inline-block;
+        }
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .suggestion-chip {
+            background-color: #e9ecef;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .suggestion-chip:hover {
+            background-color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <h1>INNOVATE-X Event Assistant</h1>
+            <p>Ask me anything about the INNOVATE-X event!</p>
+        </div>
+        
+        <div class="chat-history" id="chatHistory">
+            <div class="message bot-message">
+                Hello! I'm your INNOVATE-X event assistant. How can I help you today?
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input id="question" type="text" placeholder="Type your question here..." />
+            <button id="sendBtn" onclick="ask()">Send</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            Thinking<span class="loading-dots"></span>
+        </div>
+        
+        <div class="suggestions">
+            <div class="suggestion-chip" onclick="useQuestion('When is the INNOVATE-X event?')">When is the event?</div>
+            <div class="suggestion-chip" onclick="useQuestion('What is the fee structure?')">Fee structure</div>
+            <div class="suggestion-chip" onclick="useQuestion('What are the prizes?')">Prizes</div>
+            <div class="suggestion-chip" onclick="useQuestion('Where will the event be held?')">Venue</div>
+        </div>
+    </div>
+
+    <script>
+        // Add message to chat history
+        function addMessage(text, isUser) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.textContent = text;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // Use suggested question
+        function useQuestion(question) {
+            document.getElementById('question').value = question;
+            ask();
+        }
+        
+        async function ask() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value;
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (!question.trim()) return;
+            
+            // Add user message to chat
+            addMessage(question, true);
+            
+            // Clear input and disable button
+            questionInput.value = '';
+            sendBtn.disabled = true;
+            
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question }),
+                });
+                const data = await res.json();
+                
+                // Add bot response to chat
+                addMessage(data.answer || data.error, false);
+            } catch (error) {
+                addMessage('Error: Could not connect to the server. Please try again later.', false);
+            } finally {
+                loading.style.display = 'none';
+                sendBtn.disabled = false;
+                questionInput.focus();
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('question').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                ask();
+            }
+        });
+        
+        // Check if server is running on page load
+        window.addEventListener('load', async function() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/health');
+                if (!res.ok) {
+                    addMessage('Warning: Server connection issue. Some features may not work properly.', false);
+                }
+            } catch (error) {
+                addMessage('Error: Server not running. Please start the server to use the chatbot.', false);
+            }
+        });
+    </script>
+
+    <!-- Add this in your HTML where appropriate -->
+    <div class="faq-section">
+        <h3>Frequently Asked Questions</h3>
+        <div id="faqList" class="faq-list">
+            <!-- FAQs will be loaded here -->
+        </div>
+    </div>
+    
+    <!-- Add this to your JavaScript -->
+    <script>
+        // Load FAQs when page loads
+        window.addEventListener('load', async function() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/faq');
+                if (res.ok) {
+                    const data = await res.json();
+                    const faqList = document.getElementById('faqList');
+                    
+                    data.faqs.forEach(faq => {
+                        const faqItem = document.createElement('div');
+                        faqItem.className = 'faq-item';
+                        faqItem.innerHTML = `
+                            <div class="faq-question" onclick="toggleFaq(this)">${faq.question}</div>
+                            <div class="faq-answer">${faq.answer}</div>
+                        `;
+                        faqList.appendChild(faqItem);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading FAQs:', error);
+            }
+        });
+        
+        // Toggle FAQ answers
+        function toggleFaq(element) {
+            const answer = element.nextElementSibling;
+            if (answer.style.display === 'block') {
+                answer.style.display = 'none';
+            } else {
+                answer.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
